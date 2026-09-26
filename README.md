@@ -27,8 +27,9 @@ outbound HTTP notifications to two mock external systems:
 | **`/mock/notify`** | Simulates an Email/SMS gateway — randomly fails ~20% of requests to make retry logic observable |
 
 Failed deliveries are retried up to **3 times** with exponential backoff
-(**1 s → 2 s → 4 s**). Every attempt is persisted to the JSON file store and shown live in
-the dashboard.
+(**1 s → 2 s → 4 s**). Delivery is best-effort — each attempt updates a
+single delivery record in the JSON store (no durable queue; in-flight retries
+are lost if the process restarts, which is acceptable for a portfolio demo).
 
 ---
 
@@ -39,9 +40,10 @@ business events (e.g. `ClaimStatusChanged`) outward to registered external
 subscribers whenever a core-system state change occurs — without the external
 system needing to poll. This project replicates that outbound fan-out model:
 a single internal state change (claim status update) triggers concurrent HTTP
-deliveries to multiple subscriber endpoints, with retry semantics for transient
-failures. The structure of the event payload (`event_type`, `occurred_at`,
-`claim` object) mirrors the kind of envelope a real App Event body would carry.
+deliveries to multiple subscriber endpoints, with best-effort retry for
+transient failures. The event envelope used here (`event_type`, `occurred_at`,
+`claim` object) is loosely inspired by App Events-style payloads; it does
+**not** implement Guidewire's actual CloudEvents-based App Events schema.
 
 ---
 
@@ -133,7 +135,7 @@ curl -s -X PATCH http://localhost:3001/api/claims/1/status \
   -d '{"status":"Approved"}' | jq
 ```
 
-**Check notification history for claim 1:**
+**Check delivery history for claim 1:**
 ```bash
 curl -s http://localhost:3001/api/claims/1/notifications | jq
 ```
@@ -162,10 +164,10 @@ real-time (polls every 3 seconds).
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/api/claims` | Create a claim |
-| `GET`  | `/api/claims` | List all claims (with latest notification status) |
+| `GET`  | `/api/claims` | List all claims (with latest delivery status per channel) |
 | `PATCH`| `/api/claims/:id/status` | Update status; triggers notification relay |
-| `GET`  | `/api/claims/:id/notifications` | Full notification history for one claim |
-| `POST` | `/api/claims/:id/notifications/:channel/replay` | Re-trigger delivery for a Failed channel only |
+| `GET`  | `/api/claims/:id/notifications` | Delivery history for one claim |
+| `POST` | `/api/claims/:id/notifications/:channel/replay` | Re-trigger a Failed delivery (Failed-only, per-channel) |
 | `POST` | `/mock/crm` | Mock CRM endpoint (always 200) |
 | `POST` | `/mock/notify` | Mock Email/SMS endpoint (~20% 503) |
 | `GET`  | `/health` | Health check |
@@ -230,7 +232,7 @@ claim-notification-relay/
 │   ├── notifier.js        ← Notification relay engine (retry logic)
 │   ├── seed.js            ← Demo data seeder
 │   └── routes/
-│       ├── claims.js      ← CRUD + status-change endpoint
+│       ├── claims.js      ← Claims API (create, list, status-change, delivery history, replay)
 │       └── mock.js        ← /mock/crm and /mock/notify
 └── client/
     └── index.html         ← Single-page React dashboard (CDN React, no build)

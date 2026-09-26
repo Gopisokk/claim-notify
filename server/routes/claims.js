@@ -1,17 +1,21 @@
 /**
- * routes/claims.js — CRUD routes for insurance claims
+ * routes/claims.js — Claims API
  *
  * Endpoints:
- *   POST   /api/claims               — create a new claim (status = "Open")
- *   GET    /api/claims               — list all claims (with latest notification status)
- *   PATCH  /api/claims/:id/status    — update status; triggers notification flow
- *   GET    /api/claims/:id/notifications — notification history for one claim
+ *   POST   /api/claims               — create a new claim (status defaults to "Open")
+ *   GET    /api/claims               — list all claims (with latest delivery status per channel)
+ *   PATCH  /api/claims/:id/status    — update status; triggers outbound notification flow
+ *   GET    /api/claims/:id/notifications — delivery history for one claim
+ *   POST   /api/claims/:id/notifications/:channel/replay — re-trigger a Failed delivery (Failed only)
+ *
+ * Note: there is no DELETE and no arbitrary field update — PATCH /status is the
+ * only mutation beyond creation, which matches the project's scope of modeling
+ * the App Events "status-change triggers outbound event" pattern.
  *
  * On every PATCH /api/claims/:id/status the system fires outbound notifications
- * to both mock channels (crm and notify).  This mirrors how Guidewire's
- * App Events mechanism publishes a business event (e.g. "ClaimStatusChanged")
- * outward to subscribed external systems — without using any Guidewire SDK or
- * Integration Gateway.
+ * to both mock channels (crm and notify). This mirrors how Guidewire's App Events
+ * mechanism publishes a business event (e.g. "ClaimStatusChanged") outward to
+ * subscribed external systems — without using any Guidewire SDK or Integration Gateway.
  */
 
 const express = require('express');
@@ -71,7 +75,9 @@ router.patch('/:id/status', async (req, res) => {
   );
 });
 
-// ─── GET /api/claims/:id/notifications ───────────────────────────────────────
+// ─── GET /api/claims/:id/notifications — delivery history ────────────────────
+// Returns one record per trigger-event per channel. Attempt count and final
+// status are updated in place on the same record (not one row per attempt).
 router.get('/:id/notifications', (req, res) => {
   const { id } = req.params;
 
@@ -84,8 +90,9 @@ router.get('/:id/notifications', (req, res) => {
 });
 
 // ─── POST /api/claims/:id/notifications/:channel/replay ──────────────────────
-// Re-runs the notification flow for one channel only.
-// Only allowed when the latest attempt for that channel is "Failed".
+// Scope: re-triggers delivery for one channel only, and only when its current
+// status is "Failed". Creates a fresh delivery record (does not mutate the
+// failed one). Not available for Sent or Retrying channels.
 router.post('/:id/notifications/:channel/replay', async (req, res) => {
   const { id, channel } = req.params;
 

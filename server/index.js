@@ -14,7 +14,7 @@
  *   3001 — the Express server (API + mock endpoints + static frontend)
  *
  * Routes
- *   /api/claims              — claims CRUD
+ *   /api/claims              — Claims API (create, list, status-change, delivery history)
  *   /mock/crm, /mock/notify  — mock external system endpoints
  *   /                        — serves the React frontend
  */

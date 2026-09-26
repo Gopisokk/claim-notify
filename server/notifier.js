@@ -1,22 +1,23 @@
 /**
  * notifier.js — Notification relay engine
  *
- * This module implements the outbound notification flow that fires whenever a
- * claim's status changes.  It models Guidewire's App Events pattern:
- *
- *   "When a business event occurs inside the core platform (e.g. a claim's
- *    status changes), the system publishes a structured event payload to each
- *    registered external subscriber, with retry semantics for transient failures."
+ * Implements the outbound delivery flow that fires when a claim's status changes,
+ * modeling the App Events pattern of publishing a business event to external
+ * subscribers. Delivery is best-effort: up to MAX_ATTEMPTS HTTP POSTs per channel
+ * with exponential backoff. There is no durable queue — if the Node process
+ * crashes mid-retry the in-flight delivery is lost. For a portfolio demo this
+ * is intentional; a production system would use a persistent job queue.
  *
  * Implementation details:
- *   - Two channels are always notified: "crm" and "notify"
+ *   - Two channels are always notified concurrently: "crm" and "notify"
  *   - Each channel gets up to MAX_ATTEMPTS total tries (1 initial + 2 retries = 3)
  *   - Retry delays follow an exponential backoff: 1 s → 2 s → 4 s
- *   - Each attempt is recorded in the `notifications` store
- *   - Final status is either "Sent" (any attempt succeeded) or "Failed" (all exhausted)
+ *   - One delivery record per trigger-event per channel is written to the store;
+ *     attempt_count and status are updated in place (not one row per attempt)
+ *   - Final status is "Sent" (any attempt succeeded) or "Failed" (all exhausted)
  *
  * Note: fetch calls target the local mock endpoints in the same Express process.
- * In a real App Events integration these would be external webhook URLs.
+ * In a real App Events integration these would be external HTTPS webhook URLs.
  */
 
 const fetch = require('node-fetch');
@@ -119,9 +120,10 @@ async function notifyChannel(claimId, channel, eventPayload) {
 }
 
 /**
- * Builds the structured event payload for a claim — the same envelope used
- * for both initial notifications and replays.
- * Analogous to a Guidewire App Event body.
+ * Builds the outbound event envelope for a claim status change.
+ * The structure (event_type, occurred_at, claim object) is loosely inspired
+ * by the kind of payload a real App Events subscription would receive, but
+ * does NOT implement Guidewire's actual CloudEvents-based App Events schema.
  *
  * @param {object} claim
  * @returns {object}

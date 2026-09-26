@@ -17,7 +17,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
-const { triggerNotifications } = require('../notifier');
+const { triggerNotifications, notifyChannel, buildEventPayload } = require('../notifier');
 
 // ─── POST /api/claims ─────────────────────────────────────────────────────────
 router.post('/', (req, res) => {
@@ -81,6 +81,38 @@ router.get('/:id/notifications', (req, res) => {
   const notifications = db.getNotificationsByClaimId(id);
 
   res.json({ claim, notifications });
+});
+
+// ─── POST /api/claims/:id/notifications/:channel/replay ──────────────────────
+// Re-runs the notification flow for one channel only.
+// Only allowed when the latest attempt for that channel is "Failed".
+router.post('/:id/notifications/:channel/replay', async (req, res) => {
+  const { id, channel } = req.params;
+
+  const VALID_CHANNELS = ['crm', 'notify'];
+  if (!VALID_CHANNELS.includes(channel)) {
+    return res.status(400).json({ error: `channel must be one of: ${VALID_CHANNELS.join(', ')}` });
+  }
+
+  const claim = db.getClaim(id);
+  if (!claim) return res.status(404).json({ error: 'Claim not found.' });
+
+  // Guard: only replay a Failed channel
+  const latest = db.getLatestNotificationsByClaimId(id);
+  if (!latest[channel] || latest[channel].status !== 'Failed') {
+    return res.status(409).json({
+      error: `Channel "${channel}" is not in Failed state — replay is only available for failed deliveries.`,
+    });
+  }
+
+  res.json({ replaying: true, claim_id: Number(id), channel });
+
+  // Fire-and-forget: reuse notifyChannel (creates a fresh notification record)
+  const eventPayload = buildEventPayload(claim);
+  console.log(`[Notifier] Replaying channel=${channel} for claim ${id}`);
+  notifyChannel(claim.id, channel, eventPayload).catch(err =>
+    console.error(`[Notifier] Replay error for claim ${id} channel ${channel}:`, err)
+  );
 });
 
 module.exports = router;

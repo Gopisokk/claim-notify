@@ -3,401 +3,455 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Claim Notification Relay — Dashboard</title>
+  <title>Claim Notification Relay</title>
 
-  <!-- React + Babel (CDN — no build step required) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    /* ── Reset & base ─────────────────────────────────────────────────────── */
+    /* ── Reset ───────────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #21253a;
-      --border: #2e3250;
-      --accent: #4f6ef7;
-      --accent-hover: #3d5ae8;
-      --text: #e2e8f0;
-      --text-muted: #8892a4;
-      --green: #22c55e;
-      --yellow: #f59e0b;
-      --red: #ef4444;
-      --blue: #3b82f6;
-      --radius: 8px;
+      --white:   #ffffff;
+      --off:     #f5f5f5;
+      --border:  #d4d4d4;
+      --border2: #e5e5e5;
+      --text:    #111111;
+      --muted:   #6b6b6b;
+      --faint:   #999999;
+      --black:   #111111;
+      --radius:  4px;
+      --font:    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --mono:    'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
+      font-family: var(--font);
+      background: var(--white);
       color: var(--text);
-      min-height: 100vh;
+      font-size: 14px;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Layout ───────────────────────────────────────────────────────────── */
-    .app-shell { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    .shell { max-width: 1100px; margin: 0 auto; padding: 40px 24px 60px; }
 
-    header {
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+    }
+
+    .header-row {
       display: flex;
-      align-items: flex-start;
+      align-items: baseline;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 32px;
       flex-wrap: wrap;
     }
 
-    .brand h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text);
+    .brand {
+      font-size: 15px;
+      font-weight: 600;
       letter-spacing: -0.02em;
+      color: var(--black);
     }
 
-    .brand p {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 2px;
+    .brand-sub {
+      font-size: 11px;
+      color: var(--faint);
+      margin-top: 3px;
+      font-weight: 400;
     }
 
-    /* ── Card ─────────────────────────────────────────────────────────────── */
-    .card {
-      background: var(--surface);
+    /* ── Summary bar ─────────────────────────────────────────────────────── */
+    .summary-bar {
+      display: flex;
+      gap: 0;
+      align-items: stretch;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px;
+      overflow: hidden;
       margin-bottom: 20px;
+      background: var(--off);
     }
 
-    .card-header {
+    .summary-item {
+      flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-      gap: 10px;
+      justify-content: center;
+      padding: 12px 8px;
+      border-right: 1px solid var(--border);
+      min-width: 80px;
     }
 
-    .card-title {
-      font-size: 0.95rem;
+    .summary-item:last-child { border-right: none; }
+
+    .summary-num {
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      color: var(--black);
+      line-height: 1.1;
+    }
+
+    .summary-label {
+      font-size: 10px;
       font-weight: 600;
-      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--faint);
+      margin-top: 3px;
     }
 
-    /* ── Buttons ──────────────────────────────────────────────────────────── */
+    .summary-divider {
+      width: 1px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
     button {
       cursor: pointer;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.82rem;
+      font-family: var(--font);
+      font-size: 12px;
       font-weight: 500;
-      padding: 7px 14px;
-      transition: opacity 0.15s, background 0.15s;
-    }
-
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
-
-    .btn-ghost {
-      background: transparent;
+      border-radius: var(--radius);
+      padding: 6px 12px;
       border: 1px solid var(--border);
-      color: var(--text-muted);
+      background: var(--white);
+      color: var(--text);
+      transition: background 0.1s;
+      white-space: nowrap;
     }
-    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
 
-    .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
-    .btn-danger { background: #7f1d1d; color: #fecaca; }
+    button:hover:not(:disabled) { background: var(--off); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── Badges ───────────────────────────────────────────────────────────── */
+    .btn-solid {
+      background: var(--black);
+      color: var(--white);
+      border-color: var(--black);
+    }
+    .btn-solid:hover:not(:disabled) { background: #333; }
+
+    .btn-xs { padding: 3px 8px; font-size: 11px; }
+
+    /* ── Section label ───────────────────────────────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--faint);
+      margin-bottom: 8px;
+    }
+
+    /* ── Inline form ─────────────────────────────────────────────────────── */
+    .form-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      background: var(--off);
+      margin-bottom: 16px;
+    }
+
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+
+    .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+
+    .field-label { font-size: 11px; font-weight: 500; color: var(--muted); }
+
+    input, textarea {
+      font-family: var(--font);
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 9px;
+      color: var(--text);
+      background: var(--white);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, textarea:focus { border-color: var(--black); }
+    textarea { resize: vertical; min-height: 56px; }
+
+    /* ── Badges ──────────────────────────────────────────────────────────── */
     .badge {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 0.75rem;
+      padding: 2px 7px;
+      border-radius: 2px;
+      font-size: 11px;
       font-weight: 600;
+      letter-spacing: 0.02em;
       white-space: nowrap;
     }
 
-    .badge-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-    }
+    /* Claim status — all monochrome */
+    .bs-open     { background: var(--off);  border: 1px solid var(--border); color: var(--muted); }
+    .bs-approved { background: #111; color: #fff; border: 1px solid #111; }
+    .bs-rejected { background: var(--white); border: 1px solid #111; color: #111; }
 
-    .badge-open    { background: #1e293b; color: var(--blue);   }
-    .badge-open    .badge-dot { background: var(--blue);   }
-    .badge-approved{ background: #14532d; color: var(--green);  }
-    .badge-approved .badge-dot { background: var(--green);  }
-    .badge-rejected{ background: #450a0a; color: var(--red);   }
-    .badge-rejected .badge-dot { background: var(--red);   }
+    /* Notification status */
+    .ns-sent     { background: #111; color: #fff; border: 1px solid #111; }
+    .ns-retrying { background: var(--off); border: 1px solid var(--border); color: var(--muted); font-style: italic; }
+    .ns-failed   { background: var(--white); border: 1px solid #111; color: #111; }
+    .ns-pending  { background: var(--off); border: 1px solid var(--border2); color: var(--faint); }
 
-    .notif-sent    { background: #14532d; color: var(--green);  }
-    .notif-sent    .badge-dot { background: var(--green);  }
-    .notif-retrying{ background: #451a03; color: var(--yellow); }
-    .notif-retrying .badge-dot { background: var(--yellow); }
-    .notif-failed  { background: #450a0a; color: var(--red);   }
-    .notif-failed  .badge-dot { background: var(--red);   }
-    .notif-pending { background: #1e293b; color: var(--text-muted); }
-    .notif-pending .badge-dot { background: var(--text-muted); }
-
-    /* ── Table ────────────────────────────────────────────────────────────── */
+    /* ── Claims table ────────────────────────────────────────────────────── */
     .table-wrap { overflow-x: auto; }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.85rem;
+      font-size: 13px;
     }
 
     thead th {
       text-align: left;
-      padding: 10px 12px;
-      font-size: 0.75rem;
+      padding: 8px 12px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
+      letter-spacing: 0.07em;
+      color: var(--faint);
       border-bottom: 1px solid var(--border);
+      background: var(--off);
+      white-space: nowrap;
     }
 
     tbody tr {
-      border-bottom: 1px solid var(--border);
-      transition: background 0.12s;
+      border-bottom: 1px solid var(--border2);
       cursor: pointer;
+      transition: background 0.08s;
     }
 
     tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: var(--surface2); }
-    tbody tr.selected { background: var(--surface2); outline: 1px solid var(--accent); }
+    tbody tr:hover { background: var(--off); }
+    tbody tr.row-active { background: var(--off); outline: 1px solid var(--border); outline-offset: -1px; }
 
-    td { padding: 12px 12px; vertical-align: middle; }
+    td { padding: 10px 12px; vertical-align: middle; }
 
-    .policy-num {
-      font-family: 'Courier New', monospace;
-      font-size: 0.82rem;
-      color: var(--accent);
+    .td-id {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--faint);
     }
 
-    .desc-cell {
-      max-width: 280px;
+    .td-policy {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--black);
+      font-weight: 500;
+    }
+
+    .td-desc {
+      color: var(--muted);
+      max-width: 260px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      color: var(--text-muted);
     }
 
-    .notif-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+    .td-notifs { display: flex; gap: 5px; flex-wrap: wrap; }
 
-    /* ── Detail panel ─────────────────────────────────────────────────────── */
-    .detail-panel {
-      background: var(--surface);
+    .td-date { color: var(--faint); font-size: 11px; white-space: nowrap; }
+
+    /* ── Detail panel ────────────────────────────────────────────────────── */
+    .detail {
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 20px;
-      animation: slideIn 0.2s ease;
-    }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .detail-title {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .detail-sub {
-      font-size: 0.8rem;
-      color: var(--text-muted);
+      background: var(--white);
       margin-bottom: 16px;
     }
 
-    .status-actions {
+    .detail-head {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border2);
+      gap: 12px;
     }
 
-    .timeline { list-style: none; }
-
-    .timeline-item {
-      position: relative;
-      padding: 0 0 16px 28px;
+    .detail-policy {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--black);
+      margin-bottom: 2px;
     }
 
-    .timeline-item::before {
-      content: '';
-      position: absolute;
-      left: 9px;
-      top: 16px;
-      bottom: 0;
-      width: 1px;
-      background: var(--border);
-    }
+    .detail-desc { font-size: 12px; color: var(--muted); max-width: 500px; }
 
-    .timeline-item:last-child::before { display: none; }
+    .detail-body { padding: 14px 16px; }
 
-    .timeline-dot {
-      position: absolute;
-      left: 4px;
-      top: 4px;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      border: 2px solid var(--bg);
-    }
-
-    .dot-sent    { background: var(--green); }
-    .dot-retrying{ background: var(--yellow); }
-    .dot-failed  { background: var(--red); }
-
-    .tl-header {
+    .status-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 4px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
 
+    .status-row-label { font-size: 11px; color: var(--faint); font-weight: 500; }
+
+    .status-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ── Timeline ────────────────────────────────────────────────────────── */
+    .tl-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--faint);
+      border-top: 1px solid var(--border2);
+      padding-top: 12px;
+      margin-bottom: 12px;
+    }
+
+    .tl { list-style: none; }
+
+    .tl-item {
+      position: relative;
+      padding: 0 0 14px 22px;
+    }
+
+    .tl-item::before {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 14px;
+      bottom: 0;
+      width: 1px;
+      background: var(--border2);
+    }
+
+    .tl-item:last-child::before { display: none; }
+
+    .tl-dot {
+      position: absolute;
+      left: 1px;
+      top: 4px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      border: 2px solid var(--white);
+      box-shadow: 0 0 0 1px var(--border);
+    }
+
+    .dot-sent    { background: var(--black); box-shadow: 0 0 0 1px var(--black); }
+    .dot-retrying{ background: var(--faint); box-shadow: 0 0 0 1px var(--faint); }
+    .dot-failed  { background: var(--white); box-shadow: 0 0 0 1.5px var(--black); }
+
+    .tl-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+
     .tl-channel {
-      font-size: 0.78rem;
+      font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      color: var(--black);
+    }
+
+    .tl-meta { font-size: 11px; color: var(--faint); }
+
+    .tl-attempts {
+      font-size: 10px;
+      padding: 1px 5px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--muted);
+      font-family: var(--mono);
     }
 
     .tl-detail {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      font-family: monospace;
-      background: var(--surface2);
-      border-radius: 4px;
-      padding: 6px 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--off);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 7px 9px;
       white-space: pre-wrap;
       word-break: break-all;
-      margin-top: 4px;
+      margin-top: 5px;
     }
 
-    .tl-meta {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    /* ── New claim form ───────────────────────────────────────────────────── */
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    @media (max-width: 560px) {
-      .form-grid { grid-template-columns: 1fr; }
-    }
-
-    .form-field { display: flex; flex-direction: column; gap: 5px; }
-
-    label {
-      font-size: 0.78rem;
-      font-weight: 500;
-      color: var(--text-muted);
-    }
-
-    input, textarea {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 0.85rem;
-      padding: 8px 10px;
-      outline: none;
-      transition: border-color 0.15s;
-      font-family: inherit;
-    }
-
-    input:focus, textarea:focus { border-color: var(--accent); }
-    textarea { resize: vertical; min-height: 64px; }
-
-    /* ── Toast ────────────────────────────────────────────────────────────── */
-    .toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      z-index: 9999;
-    }
-
-    .toast {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 16px;
-      font-size: 0.83rem;
-      min-width: 260px;
-      max-width: 340px;
-      animation: toastIn 0.2s ease;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    }
-
-    @keyframes toastIn {
-      from { opacity: 0; transform: translateX(20px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-
-    .toast-success { border-left: 3px solid var(--green); }
-    .toast-error   { border-left: 3px solid var(--red);   }
-    .toast-info    { border-left: 3px solid var(--blue);  }
-
-    /* ── Misc ─────────────────────────────────────────────────────────────── */
-    .empty-state {
+    /* ── Empty / loading ─────────────────────────────────────────────────── */
+    .empty {
       text-align: center;
-      padding: 40px;
-      color: var(--text-muted);
-      font-size: 0.88rem;
+      padding: 36px;
+      color: var(--faint);
+      font-size: 13px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
     }
 
     .spinner {
       display: inline-block;
-      width: 14px;
-      height: 14px;
+      width: 12px; height: 12px;
       border: 2px solid var(--border);
-      border-top-color: var(--accent);
+      border-top-color: var(--black);
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      animation: spin 0.65s linear infinite;
       vertical-align: middle;
+      margin-right: 4px;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .section-sep { height: 1px; background: var(--border); margin: 8px 0 16px; }
-
-    .flex-gap { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-
-    .refresh-btn { margin-left: auto; }
-
-    .tag {
-      display: inline-block;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      font-family: monospace;
+    /* ── Toast ───────────────────────────────────────────────────────────── */
+    .toast-wrap {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 9000;
     }
+
+    .toast {
+      background: var(--black);
+      color: var(--white);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 12px;
+      min-width: 220px;
+      max-width: 320px;
+      animation: tIn 0.18s ease;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    }
+
+    .toast-error { background: var(--white); color: var(--black); border: 1px solid var(--black); }
+
+    @keyframes tIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Misc ────────────────────────────────────────────────────────────── */
+    .flex { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ml-auto { margin-left: auto; }
+    .mono { font-family: var(--mono); font-size: 11px; }
+    hr.sep { border: none; border-top: 1px solid var(--border2); margin: 12px 0; }
   </style>
 </head>
 <body>
@@ -405,37 +459,37 @@
 
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef } = React;
-
-const API = '';  // same origin
+const API = '';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-function claimStatusClass(status) {
-  return { Open: 'badge-open', Approved: 'badge-approved', Rejected: 'badge-rejected' }[status] || 'badge-open';
+function fmtDate(s) {
+  if (!s) return '—';
+  return new Date(s.replace(' ', 'T') + 'Z').toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
 }
 
-function notifStatusClass(status) {
-  if (!status) return 'notif-pending';
-  return { Sent: 'notif-sent', Retrying: 'notif-retrying', Failed: 'notif-failed' }[status] || 'notif-pending';
+function claimBadgeClass(s) {
+  return { Open: 'bs-open', Approved: 'bs-approved', Rejected: 'bs-rejected' }[s] || 'bs-open';
 }
 
-function dotClass(status) {
-  return { Sent: 'dot-sent', Retrying: 'dot-retrying', Failed: 'dot-failed' }[status] || 'dot-sent';
+function notifBadgeClass(s) {
+  return { Sent: 'ns-sent', Retrying: 'ns-retrying', Failed: 'ns-failed' }[s] || 'ns-pending';
 }
 
-function fmtDate(str) {
-  if (!str) return '—';
-  return new Date(str).toLocaleString();
+function dotClass(s) {
+  return { Sent: 'dot-sent', Retrying: 'dot-retrying', Failed: 'dot-failed' }[s] || 'dot-retrying';
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────────
 
 function ToastContainer({ toasts }) {
   return (
-    <div className="toast-container">
+    <div className="toast-wrap">
       {toasts.map(t => (
-        <div key={t.id} className={`toast toast-${t.type}`}>
-          {t.message}
+        <div key={t.id} className={`toast${t.type === 'error' ? ' toast-error' : ''}`}>
+          {t.msg}
         </div>
       ))}
     </div>
@@ -444,176 +498,215 @@ function ToastContainer({ toasts }) {
 
 function useToast() {
   const [toasts, setToasts] = useState([]);
-  const toast = useCallback((message, type = 'info') => {
+  const push = useCallback((msg, type = 'info') => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+    setToasts(p => [...p, { id, msg, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
   }, []);
-  return { toasts, toast };
+  return { toasts, push };
+}
+
+// ── Summary Bar ────────────────────────────────────────────────────────────────
+
+function SummaryBar({ claims }) {
+  let totalClaims = claims.length;
+  let sent = 0, retrying = 0, failed = 0, pending = 0;
+
+  for (const c of claims) {
+    const ns = c.notification_status || {};
+    for (const ch of ['crm', 'notify']) {
+      const s = ns[ch]?.status;
+      if (s === 'Sent')     sent++;
+      else if (s === 'Retrying') retrying++;
+      else if (s === 'Failed')   failed++;
+      else                        pending++;
+    }
+  }
+
+  const items = [
+    { label: 'Claims',   num: totalClaims },
+    { label: 'Sent',     num: sent        },
+    { label: 'Retrying', num: retrying    },
+    { label: 'Failed',   num: failed      },
+    { label: 'Pending',  num: pending     },
+  ];
+
+  return (
+    <div className="summary-bar">
+      {items.map((it, i) => (
+        <div className="summary-item" key={it.label}>
+          <div className="summary-num">{it.num}</div>
+          <div className="summary-label">{it.label}</div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }) {
-  return (
-    <span className={`badge ${claimStatusClass(status)}`}>
-      <span className="badge-dot" />
-      {status}
-    </span>
-  );
+function ClaimBadge({ status }) {
+  return <span className={`badge ${claimBadgeClass(status)}`}>{status}</span>;
 }
 
 function NotifBadge({ channel, status, attempts }) {
   const label = status || 'Pending';
   return (
-    <span className={`badge ${notifStatusClass(status)}`} title={`${channel}: ${label} (${attempts || 0} attempt${attempts !== 1 ? 's' : ''})`}>
-      <span className="badge-dot" />
-      {channel.toUpperCase()} · {label}
-      {attempts > 0 && <span style={{ opacity: 0.7, marginLeft: 2 }}>×{attempts}</span>}
+    <span
+      className={`badge ${notifBadgeClass(status)}`}
+      title={`${channel}: ${label} (${attempts || 0} attempt${attempts !== 1 ? 's' : ''})`}
+    >
+      {channel.toUpperCase()} {label}
     </span>
   );
 }
 
-// ── Create Claim Form ─────────────────────────────────────────────────────────
+// ── New Claim Form ─────────────────────────────────────────────────────────────
 
-function NewClaimForm({ onCreated, toast }) {
+function NewClaimForm({ onCreated, push }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ policy_number: '', description: '' });
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.policy_number.trim() || !form.description.trim()) {
-      toast('Both fields are required.', 'error');
-      return;
+      return push('Both fields are required.', 'error');
     }
     setSaving(true);
     try {
-      const res = await fetch(`${API}/api/claims`, {
+      const res  = await fetch(`${API}/api/claims`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create claim');
-      toast(`Claim ${data.policy_number} created.`, 'success');
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      push(`Claim ${data.policy_number} created.`);
       setForm({ policy_number: '', description: '' });
       setOpen(false);
       onCreated();
-    } catch (err) {
-      toast(err.message, 'error');
-    } finally {
-      setSaving(false);
-    }
+    } catch (err) { push(err.message, 'error'); }
+    finally { setSaving(false); }
   };
 
   if (!open) {
     return (
-      <button className="btn-primary" onClick={() => setOpen(true)}>
+      <button className="btn-solid" onClick={() => setOpen(true)} style={{ marginBottom: 16 }}>
         + New Claim
       </button>
     );
   }
 
   return (
-    <div className="card" style={{ marginBottom: 20 }}>
-      <div className="card-header">
-        <span className="card-title">Create New Claim</span>
-        <button className="btn-ghost btn-sm" onClick={() => setOpen(false)}>✕ Cancel</button>
+    <div className="form-card">
+      <div className="flex" style={{ marginBottom: 12 }}>
+        <span style={{ fontWeight: 600, fontSize: 13 }}>New Claim</span>
+        <button className="ml-auto btn-xs" onClick={() => setOpen(false)}>Cancel</button>
       </div>
-      <form onSubmit={handleSubmit}>
-        <div className="form-grid">
-          <div className="form-field">
-            <label htmlFor="policy_number">Policy Number</label>
+      <form onSubmit={submit}>
+        <div className="form-row">
+          <div className="field">
+            <label className="field-label">Policy Number</label>
             <input
-              id="policy_number"
               placeholder="e.g. POL-2024-009"
               value={form.policy_number}
               onChange={e => setForm(f => ({ ...f, policy_number: e.target.value }))}
             />
           </div>
-          <div className="form-field" style={{ gridColumn: '1 / -1' }}>
-            <label htmlFor="description">Description</label>
-            <textarea
-              id="description"
-              placeholder="Describe the claim event…"
+          <div className="field" style={{ flex: 2 }}>
+            <label className="field-label">Description</label>
+            <input
+              placeholder="Describe the claim event"
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             />
           </div>
         </div>
-        <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? <><span className="spinner" /> Creating…</> : 'Create Claim'}
+        <button type="submit" className="btn-solid" disabled={saving}>
+          {saving ? <><span className="spinner" />Creating…</> : 'Create Claim'}
         </button>
       </form>
     </div>
   );
 }
 
-// ── Notification Timeline ─────────────────────────────────────────────────────
+// ── Notification Timeline ──────────────────────────────────────────────────────
 
-function NotificationTimeline({ claimId, claim }) {
-  const [data, setData] = useState(null);
+function NotifTimeline({ claimId, push, onRefreshClaims }) {
+  const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const intervalRef = useRef(null);
+  const [replaying, setReplaying] = useState({});
+  const timerRef = useRef(null);
 
-  const fetchData = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/claims/${claimId}/notifications`);
-      const json = await res.json();
-      setData(json);
+      const r = await fetch(`${API}/api/claims/${claimId}/notifications`);
+      const j = await r.json();
+      setData(j);
     } catch (_) {}
     setLoading(false);
   }, [claimId]);
 
   useEffect(() => {
-    fetchData();
-    // Poll every 2s to pick up in-progress retries live
-    intervalRef.current = setInterval(fetchData, 2000);
-    return () => clearInterval(intervalRef.current);
-  }, [fetchData]);
+    load();
+    timerRef.current = setInterval(load, 2000);
+    return () => clearInterval(timerRef.current);
+  }, [load]);
 
-  if (loading) return <div style={{ padding: 12, color: 'var(--text-muted)' }}><span className="spinner" /> Loading…</div>;
-  if (!data) return null;
+  const replay = async (channel) => {
+    setReplaying(r => ({ ...r, [channel]: true }));
+    try {
+      const res = await fetch(`${API}/api/claims/${claimId}/notifications/${channel}/replay`, { method: 'POST' });
+      const j   = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Replay failed');
+      push(`Replaying ${channel} channel…`);
+      onRefreshClaims();
+    } catch (err) { push(err.message, 'error'); }
+    finally { setReplaying(r => ({ ...r, [channel]: false })); }
+  };
+
+  if (loading) return <div style={{ color: 'var(--faint)', fontSize: 12 }}><span className="spinner" />Loading…</div>;
+  if (!data)   return null;
 
   const { notifications } = data;
 
   return (
     <div>
-      <p className="tl-meta" style={{ marginBottom: 12 }}>
-        {notifications.length === 0
-          ? 'No notification attempts yet for this claim.'
-          : `${notifications.length} notification record(s) — auto-refreshing every 2s`}
-      </p>
+      <div className="tl-section-label">
+        Notification History
+        {notifications.length > 0 && <span style={{ fontWeight: 400, marginLeft: 6 }}>· {notifications.length} record{notifications.length !== 1 ? 's' : ''} · auto-refreshing</span>}
+      </div>
 
       {notifications.length === 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-          Change the claim's status above to trigger the notification relay.
+        <p style={{ color: 'var(--faint)', fontSize: 12 }}>
+          No attempts yet. Change the claim's status above to trigger the relay.
         </p>
       )}
 
-      <ul className="timeline">
+      <ul className="tl">
         {notifications.map(n => (
-          <li key={n.id} className="timeline-item">
-            <span className={`timeline-dot ${dotClass(n.status)}`} />
-            <div className="tl-header">
+          <li key={n.id} className="tl-item">
+            <span className={`tl-dot ${dotClass(n.status)}`} />
+            <div className="tl-head">
               <span className="tl-channel">{n.channel}</span>
-              <span className={`badge ${notifStatusClass(n.status)}`} style={{ fontSize: '0.7rem' }}>
-                <span className="badge-dot" />
-                {n.status}
-              </span>
-              <span className="tag">{n.attempt_count} attempt{n.attempt_count !== 1 ? 's' : ''}</span>
+              <span className={`badge ${notifBadgeClass(n.status)}`} style={{ fontSize: 10 }}>{n.status}</span>
+              <span className="tl-attempts">{n.attempt_count}×</span>
               <span className="tl-meta">{fmtDate(n.last_attempt_at)}</span>
+              {n.status === 'Failed' && (
+                <button
+                  className="btn-xs btn-solid"
+                  disabled={replaying[n.channel]}
+                  onClick={() => replay(n.channel)}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  {replaying[n.channel] ? <><span className="spinner" />Replaying…</> : '↺ Replay'}
+                </button>
+              )}
             </div>
             {n.response_detail && (
               <div className="tl-detail">
-                {(() => {
-                  try {
-                    return JSON.stringify(JSON.parse(n.response_detail), null, 2);
-                  } catch {
-                    return n.response_detail;
-                  }
-                })()}
+                {(() => { try { return JSON.stringify(JSON.parse(n.response_detail), null, 2); } catch { return n.response_detail; } })()}
               </div>
             )}
           </li>
@@ -623,206 +716,179 @@ function NotificationTimeline({ claimId, claim }) {
   );
 }
 
-// ── Detail Panel ──────────────────────────────────────────────────────────────
+// ── Detail Panel ───────────────────────────────────────────────────────────────
 
-function DetailPanel({ claim, onClose, onRefresh, toast }) {
-  const [updating, setUpdating] = useState(false);
+function DetailPanel({ claim, onClose, onRefresh, push }) {
+  const [busy, setBusy] = useState(false);
   const STATUSES = ['Open', 'Approved', 'Rejected'];
 
-  const changeStatus = async (newStatus) => {
-    if (newStatus === claim.status) return;
-    setUpdating(true);
+  const changeStatus = async (s) => {
+    if (s === claim.status) return;
+    setBusy(true);
     try {
-      const res = await fetch(`${API}/api/claims/${claim.id}/status`, {
+      const res  = await fetch(`${API}/api/claims/${claim.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: s }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Update failed');
-      toast(`Status changed to "${newStatus}" — notifications firing…`, 'info');
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      push(`Status → ${s} · Notifications firing…`);
       onRefresh();
-    } catch (err) {
-      toast(err.message, 'error');
-    } finally {
-      setUpdating(false);
-    }
+    } catch (err) { push(err.message, 'error'); }
+    finally { setBusy(false); }
   };
 
   return (
-    <div className="detail-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+    <div className="detail">
+      <div className="detail-head">
         <div>
-          <div className="detail-title">
-            <span className="policy-num">{claim.policy_number}</span>
-          </div>
-          <div className="detail-sub">{claim.description}</div>
+          <div className="detail-policy">{claim.policy_number}</div>
+          <div className="detail-desc">{claim.description}</div>
         </div>
-        <button className="btn-ghost btn-sm" onClick={onClose}>✕</button>
+        <button className="btn-xs" onClick={onClose}>✕ Close</button>
       </div>
-
-      <div className="flex-gap" style={{ marginBottom: 14 }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current status:</span>
-        <StatusBadge status={claim.status} />
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Created: {fmtDate(claim.created_at)}</span>
+      <div className="detail-body">
+        <div className="status-row">
+          <span className="status-row-label">Status</span>
+          <ClaimBadge status={claim.status} />
+          <span style={{ color: 'var(--faint)', fontSize: 11 }}>Created {fmtDate(claim.created_at)}</span>
+        </div>
+        <div className="status-row" style={{ marginBottom: 14 }}>
+          <span className="status-row-label">Change to</span>
+          <div className="status-btns">
+            {STATUSES.map(s => (
+              <button
+                key={s}
+                disabled={busy || s === claim.status}
+                onClick={() => changeStatus(s)}
+                className={s === claim.status ? 'btn-solid' : ''}
+              >
+                {s}
+              </button>
+            ))}
+            {busy && <span className="spinner" />}
+          </div>
+        </div>
+        <NotifTimeline claimId={claim.id} push={push} onRefreshClaims={onRefresh} />
       </div>
-
-      <div className="section-sep" />
-
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 8 }}>
-        Change status to trigger the App Events notification relay:
-      </p>
-      <div className="status-actions">
-        {STATUSES.map(s => (
-          <button
-            key={s}
-            className={s === claim.status ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
-            disabled={updating || s === claim.status}
-            onClick={() => changeStatus(s)}
-          >
-            {updating && s !== claim.status ? '' : null}
-            {s}
-          </button>
-        ))}
-        {updating && <span className="spinner" />}
-      </div>
-
-      <div className="section-sep" />
-      <p className="card-title" style={{ marginBottom: 12 }}>Notification History</p>
-      <NotificationTimeline claimId={claim.id} claim={claim} />
     </div>
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// ── App ────────────────────────────────────────────────────────────────────────
 
 function App() {
-  const [claims, setClaims] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState(null);
-  const { toasts, toast } = useToast();
+  const [claims, setClaims]     = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [selectedId, setSelected] = useState(null);
+  const { toasts, push } = useToast();
 
-  const fetchClaims = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/claims`);
-      const data = await res.json();
-      setClaims(data);
-    } catch (err) {
-      toast('Failed to load claims.', 'error');
-    } finally {
-      setLoading(false);
-    }
+      const r = await fetch(`${API}/api/claims`);
+      const d = await r.json();
+      setClaims(d);
+    } catch (e) { push('Failed to load claims.', 'error'); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
-    fetchClaims();
-    const interval = setInterval(fetchClaims, 3000); // live-refresh every 3s
-    return () => clearInterval(interval);
-  }, [fetchClaims]);
+    load();
+    const id = setInterval(load, 3000);
+    return () => clearInterval(id);
+  }, [load]);
 
-  const selectedClaim = claims.find(c => c.id === selectedId);
+  const selected = claims.find(c => c.id === selectedId);
 
   return (
-    <div className="app-shell">
+    <div className="shell">
       {/* Header */}
-      <header>
-        <div className="brand">
-          <h1>⚡ Claim Notification Relay</h1>
-          <p>Modeled on Guidewire's App Events pattern · Portfolio project · Not Guidewire software</p>
+      <div className="header">
+        <div className="header-row">
+          <div>
+            <div className="brand">Claim Notification Relay</div>
+            <div className="brand-sub">Modeled on Guidewire's App Events pattern · Portfolio project · Not Guidewire software</div>
+          </div>
+          <button onClick={load} style={{ fontSize: 11 }}>⟳ Refresh</button>
         </div>
-        <div className="flex-gap">
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {claims.length} claim{claims.length !== 1 ? 's' : ''}
-          </span>
-          <button className="btn-ghost btn-sm" onClick={fetchClaims}>⟳ Refresh</button>
-        </div>
-      </header>
+      </div>
 
-      {/* New Claim Form */}
-      <NewClaimForm onCreated={fetchClaims} toast={toast} />
+      {/* Summary */}
+      <SummaryBar claims={claims} />
 
-      {/* Detail Panel */}
-      {selectedClaim && (
+      {/* New Claim */}
+      <NewClaimForm onCreated={load} push={push} />
+
+      {/* Detail */}
+      {selected && (
         <DetailPanel
-          claim={selectedClaim}
-          onClose={() => setSelectedId(null)}
-          onRefresh={fetchClaims}
-          toast={toast}
+          claim={selected}
+          onClose={() => setSelected(null)}
+          onRefresh={load}
+          push={push}
         />
       )}
 
-      {/* Claims Table */}
-      <div className="card">
-        <div className="card-header">
-          <span className="card-title">All Claims</span>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            Click a row to view details & change status
-          </span>
+      {/* Table */}
+      <div className="section-label">All Claims</div>
+
+      {loading && <div className="empty"><span className="spinner" />Loading claims…</div>}
+
+      {!loading && claims.length === 0 && (
+        <div className="empty">
+          No claims. Create one above or run <span className="mono">npm run seed</span> for demo data.
         </div>
+      )}
 
-        {loading && (
-          <div className="empty-state"><span className="spinner" /> Loading…</div>
-        )}
-
-        {!loading && claims.length === 0 && (
-          <div className="empty-state">
-            No claims yet. Create one above, or run <code>npm run seed</code> for demo data.
-          </div>
-        )}
-
-        {!loading && claims.length > 0 && (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Policy #</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>CRM</th>
-                  <th>Notify</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                {claims.map(claim => {
-                  const crm    = claim.notification_status?.crm;
-                  const notify = claim.notification_status?.notify;
-                  return (
-                    <tr
-                      key={claim.id}
-                      onClick={() => setSelectedId(claim.id === selectedId ? null : claim.id)}
-                      className={claim.id === selectedId ? 'selected' : ''}
-                    >
-                      <td><span className="tag">#{claim.id}</span></td>
-                      <td><span className="policy-num">{claim.policy_number}</span></td>
-                      <td><div className="desc-cell" title={claim.description}>{claim.description}</div></td>
-                      <td><StatusBadge status={claim.status} /></td>
-                      <td>
-                        {crm
-                          ? <NotifBadge channel="crm" status={crm.status} attempts={crm.attempt_count} />
-                          : <span className="badge notif-pending"><span className="badge-dot" />CRM · Pending</span>
-                        }
-                      </td>
-                      <td>
-                        {notify
-                          ? <NotifBadge channel="notify" status={notify.status} attempts={notify.attempt_count} />
-                          : <span className="badge notif-pending"><span className="badge-dot" />Notify · Pending</span>
-                        }
-                      </td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                        {fmtDate(claim.created_at)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-
+      {!loading && claims.length > 0 && (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Policy</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>CRM</th>
+                <th>Notify</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {claims.map(c => {
+                const crm    = c.notification_status?.crm;
+                const notify = c.notification_status?.notify;
+                return (
+                  <tr
+                    key={c.id}
+                    className={c.id === selectedId ? 'row-active' : ''}
+                    onClick={() => setSelected(c.id === selectedId ? null : c.id)}
+                  >
+                    <td className="td-id">{c.id}</td>
+                    <td className="td-policy">{c.policy_number}</td>
+                    <td className="td-desc" title={c.description}>{c.description}</td>
+                    <td><ClaimBadge status={c.status} /></td>
+                    <td>
+                      {crm
+                        ? <NotifBadge channel="crm"    status={crm.status}    attempts={crm.attempt_count}    />
+                        : <span className="badge ns-pending">CRM Pending</span>
+                      }
+                    </td>
+                    <td>
+                      {notify
+                        ? <NotifBadge channel="notify" status={notify.status} attempts={notify.attempt_count} />
+                        : <span className="badge ns-pending">NOTIFY Pending</span>
+                      }
+                    </td>
+                    <td className="td-date">{fmtDate(c.created_at)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <ToastContainer toasts={toasts} />
     </div>

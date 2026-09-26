@@ -27,7 +27,7 @@ outbound HTTP notifications to two mock external systems:
 | **`/mock/notify`** | Simulates an Email/SMS gateway — randomly fails ~20% of requests to make retry logic observable |
 
 Failed deliveries are retried up to **3 times** with exponential backoff
-(**1 s → 2 s → 4 s**). Every attempt is persisted to SQLite and shown live in
+(**1 s → 2 s → 4 s**). Every attempt is persisted to the JSON file store and shown live in
 the dashboard.
 
 ---
@@ -52,8 +52,8 @@ failures. The structure of the event payload (`event_type`, `occurred_at`,
           │
           ▼
   ┌─────────────────────┐
-  │   Claim Service     │  Updates SQLite, responds 200 immediately
-  │  (Express + SQLite) │
+  │   Claim Service     │  Updates JSON store, responds 200 immediately
+  │  (Express + JSON)   │
   └──────────┬──────────┘
              │  async — models Guidewire App Events outbound publish
              │
@@ -65,7 +65,7 @@ failures. The structure of the event payload (`event_type`, `occurred_at`,
  └──────────┘  │  backoff: 1 s → 2 s → 4 s   │
                └──────────────────────────────┘
 
-  All attempt records → notifications table (SQLite)
+  All attempt records → data/claims.json
   Dashboard polls every 3 s to show live status
 ```
 
@@ -76,7 +76,7 @@ failures. The structure of the event payload (`event_type`, `occurred_at`,
 | Layer | Technology |
 |-------|------------|
 | Backend | Node.js 18+ · Express 4 |
-| Database | SQLite (via `better-sqlite3`) — single file, zero setup |
+| Data store | Lightweight JSON file store (`data/claims.json`) — chosen to avoid native build dependencies for a portfolio demo |
 | Frontend | Plain React 18 (CDN, no build step) served by Express |
 | Mock endpoints | Express routes in the same process |
 
@@ -94,7 +94,7 @@ failures. The structure of the event payload (`event_type`, `occurred_at`,
 # 1. Install dependencies
 npm install
 
-# 2. Seed the database with 8 demo claims
+# 2. Seed the JSON store with 8 demo claims
 npm run seed
 
 # 3. Start the server (auto-reloads on file changes)
@@ -106,7 +106,7 @@ npm start
 
 Open **http://localhost:3001** in your browser.
 
-The `data/` directory is created automatically; it contains `claims.db`.
+The `data/` directory is created automatically; it contains `claims.json` (the JSON file store).
 
 ---
 
@@ -165,34 +165,54 @@ real-time (polls every 3 seconds).
 | `GET`  | `/api/claims` | List all claims (with latest notification status) |
 | `PATCH`| `/api/claims/:id/status` | Update status; triggers notification relay |
 | `GET`  | `/api/claims/:id/notifications` | Full notification history for one claim |
+| `POST` | `/api/claims/:id/notifications/:channel/replay` | Re-trigger delivery for a Failed channel only |
 | `POST` | `/mock/crm` | Mock CRM endpoint (always 200) |
 | `POST` | `/mock/notify` | Mock Email/SMS endpoint (~20% 503) |
 | `GET`  | `/health` | Health check |
 
 ---
 
-## Database schema
+## Data store structure
 
-```sql
-CREATE TABLE claims (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  policy_number TEXT    NOT NULL,
-  description   TEXT    NOT NULL,
-  status        TEXT    NOT NULL DEFAULT 'Open',  -- Open | Approved | Rejected
-  created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
-);
+Data is persisted to `data/claims.json` as a single JSON file with two
+arrays and an auto-increment sequence counter. No SQL engine is running —
+reads and writes use Node's built-in `fs` module (synchronous, safe at
+demo scale since Node.js is single-threaded).
 
-CREATE TABLE notifications (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  claim_id        INTEGER NOT NULL REFERENCES claims(id),
-  channel         TEXT    NOT NULL,               -- crm | notify
-  status          TEXT    NOT NULL DEFAULT 'Retrying', -- Sent | Retrying | Failed
-  attempt_count   INTEGER NOT NULL DEFAULT 0,
-  last_attempt_at TEXT,
-  response_detail TEXT,
-  created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
-);
+```json
+{
+  "_seqs": { "claims": 8, "notifications": 12 },
+  "claims": [
+    {
+      "id": 1,
+      "policy_number": "POL-2024-001",
+      "description": "Water damage to living room ceiling following pipe burst",
+      "status": "Open",
+      "created_at": "2026-09-26 08:23:06"
+    }
+  ],
+  "notifications": [
+    {
+      "id": 1,
+      "claim_id": 1,
+      "channel": "crm",
+      "status": "Sent",
+      "attempt_count": 1,
+      "last_attempt_at": "2026-09-26 08:23:51",
+      "response_detail": "{\"channel\":\"crm\",\"result\":\"accepted\"}",
+      "created_at": "2026-09-26 08:23:51"
+    }
+  ]
+}
 ```
+
+**Field reference:**
+
+| Field | Values |
+|-------|--------|
+| `claims.status` | `Open` · `Approved` · `Rejected` |
+| `notifications.channel` | `crm` · `notify` |
+| `notifications.status` | `Sent` · `Retrying` · `Failed` |
 
 ---
 
@@ -203,10 +223,10 @@ claim-notification-relay/
 ├── package.json
 ├── README.md
 ├── data/
-│   └── claims.db          ← auto-created by SQLite on first run
+│   └── claims.json        ← auto-created JSON file store (git-ignored)
 ├── server/
 │   ├── index.js           ← Express app entry point
-│   ├── db.js              ← SQLite initializer (tables + WAL mode)
+│   ├── db.js              ← Pure-JS JSON file store (no native deps)
 │   ├── notifier.js        ← Notification relay engine (retry logic)
 │   ├── seed.js            ← Demo data seeder
 │   └── routes/

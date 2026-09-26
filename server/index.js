@@ -23,7 +23,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
-// Initialise database (creates tables if they don't exist)
+// Initialise JSON file store (creates data/claims.json if it doesn't exist)
 require('./db');
 
 const claimsRouter = require('./routes/claims');

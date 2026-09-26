@@ -119,14 +119,15 @@ async function notifyChannel(claimId, channel, eventPayload) {
 }
 
 /**
- * Entry point: called on every claim status change.
- * Fires notifications to both channels concurrently.
+ * Builds the structured event payload for a claim — the same envelope used
+ * for both initial notifications and replays.
+ * Analogous to a Guidewire App Event body.
  *
- * @param {object} claim — the updated claim row
+ * @param {object} claim
+ * @returns {object}
  */
-async function triggerNotifications(claim) {
-  // Build the structured event payload — analogous to a Guidewire App Event body
-  const eventPayload = {
+function buildEventPayload(claim) {
+  return {
     event_type:  'ClaimStatusChanged',
     occurred_at: new Date().toISOString(),
     claim: {
@@ -136,6 +137,16 @@ async function triggerNotifications(claim) {
       new_status:    claim.status,
     },
   };
+}
+
+/**
+ * Entry point: called on every claim status change.
+ * Fires notifications to both channels concurrently.
+ *
+ * @param {object} claim — the updated claim row
+ */
+async function triggerNotifications(claim) {
+  const eventPayload = buildEventPayload(claim);
 
   console.log(
     `[Notifier] Firing ClaimStatusChanged event for claim ${claim.id} → status="${claim.status}"`
@@ -148,4 +159,4 @@ async function triggerNotifications(claim) {
   ]);
 }
 
-module.exports = { triggerNotifications };
+module.exports = { triggerNotifications, notifyChannel, buildEventPayload };

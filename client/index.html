@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claim Notification Relay — Dashboard</title>
+
+  <!-- React + Babel (CDN — no build step required) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #21253a;
+      --border: #2e3250;
+      --accent: #4f6ef7;
+      --accent-hover: #3d5ae8;
+      --text: #e2e8f0;
+      --text-muted: #8892a4;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────────────── */
+    .app-shell { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .brand h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Card ─────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────────────────── */
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 7px 14px;
+      transition: opacity 0.15s, background 0.15s;
+    }
+
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+
+    .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+    .btn-danger { background: #7f1d1d; color: #fecaca; }
+
+    /* ── Badges ───────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+
+    .badge-open    { background: #1e293b; color: var(--blue);   }
+    .badge-open    .badge-dot { background: var(--blue);   }
+    .badge-approved{ background: #14532d; color: var(--green);  }
+    .badge-approved .badge-dot { background: var(--green);  }
+    .badge-rejected{ background: #450a0a; color: var(--red);   }
+    .badge-rejected .badge-dot { background: var(--red);   }
+
+    .notif-sent    { background: #14532d; color: var(--green);  }
+    .notif-sent    .badge-dot { background: var(--green);  }
+    .notif-retrying{ background: #451a03; color: var(--yellow); }
+    .notif-retrying .badge-dot { background: var(--yellow); }
+    .notif-failed  { background: #450a0a; color: var(--red);   }
+    .notif-failed  .badge-dot { background: var(--red);   }
+    .notif-pending { background: #1e293b; color: var(--text-muted); }
+    .notif-pending .badge-dot { background: var(--text-muted); }
+
+    /* ── Table ────────────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+      cursor: pointer;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody tr.selected { background: var(--surface2); outline: 1px solid var(--accent); }
+
+    td { padding: 12px 12px; vertical-align: middle; }
+
+    .policy-num {
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: var(--accent);
+    }
+
+    .desc-cell {
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-muted);
+    }
+
+    .notif-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ── Detail panel ─────────────────────────────────────────────────────── */
+    .detail-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .detail-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .detail-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .status-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .timeline { list-style: none; }
+
+    .timeline-item {
+      position: relative;
+      padding: 0 0 16px 28px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: 9px;
+      top: 16px;
+      bottom: 0;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .timeline-item:last-child::before { display: none; }
+
+    .timeline-dot {
+      position: absolute;
+      left: 4px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+    }
+
+    .dot-sent    { background: var(--green); }
+    .dot-retrying{ background: var(--yellow); }
+    .dot-failed  { background: var(--red); }
+
+    .tl-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+
+    .tl-channel {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .tl-detail {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: monospace;
+      background: var(--surface2);
+      border-radius: 4px;
+      padding: 6px 8px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 4px;
+    }
+
+    .tl-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* ── New claim form ───────────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 560px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-field { display: flex; flex-direction: column; gap: 5px; }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    input, textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.85rem;
+      padding: 8px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 64px; }
+
+    /* ── Toast ────────────────────────────────────────────────────────────── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9999;
+    }
+
+    .toast {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 0.83rem;
+      min-width: 260px;
+      max-width: 340px;
+      animation: toastIn 0.2s ease;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .toast-success { border-left: 3px solid var(--green); }
+    .toast-error   { border-left: 3px solid var(--red);   }
+    .toast-info    { border-left: 3px solid var(--blue);  }
+
+    /* ── Misc ─────────────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .section-sep { height: 1px; background: var(--border); margin: 8px 0 16px; }
+
+    .flex-gap { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .refresh-btn { margin-left: auto; }
+
+    .tag {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const API = '';  // same origin
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function claimStatusClass(status) {
+  return { Open: 'badge-open', Approved: 'badge-approved', Rejected: 'badge-rejected' }[status] || 'badge-open';
+}
+
+function notifStatusClass(status) {
+  if (!status) return 'notif-pending';
+  return { Sent: 'notif-sent', Retrying: 'notif-retrying', Failed: 'notif-failed' }[status] || 'notif-pending';
+}
+
+function dotClass(status) {
+  return { Sent: 'dot-sent', Retrying: 'dot-retrying', Failed: 'dot-failed' }[status] || 'dot-sent';
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  return new Date(str).toLocaleString();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+
+function ToastContainer({ toasts }) {
+  return (
+    <div className="toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast toast-${t.type}`}>
+          {t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const toast = useCallback((message, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  }, []);
+  return { toasts, toast };
+}
+
+// ── Status Badge ──────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }) {
+  return (
+    <span className={`badge ${claimStatusClass(status)}`}>
+      <span className="badge-dot" />
+      {status}
+    </span>
+  );
+}
+
+function NotifBadge({ channel, status, attempts }) {
+  const label = status || 'Pending';
+  return (
+    <span className={`badge ${notifStatusClass(status)}`} title={`${channel}: ${label} (${attempts || 0} attempt${attempts !== 1 ? 's' : ''})`}>
+      <span className="badge-dot" />
+      {channel.toUpperCase()} · {label}
+      {attempts > 0 && <span style={{ opacity: 0.7, marginLeft: 2 }}>×{attempts}</span>}
+    </span>
+  );
+}
+
+// ── Create Claim Form ─────────────────────────────────────────────────────────
+
+function NewClaimForm({ onCreated, toast }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ policy_number: '', description: '' });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.policy_number.trim() || !form.description.trim()) {
+      toast('Both fields are required.', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/api/claims`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create claim');
+      toast(`Claim ${data.policy_number} created.`, 'success');
+      setForm({ policy_number: '', description: '' });
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button className="btn-primary" onClick={() => setOpen(true)}>
+        + New Claim
+      </button>
+    );
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: 20 }}>
+      <div className="card-header">
+        <span className="card-title">Create New Claim</span>
+        <button className="btn-ghost btn-sm" onClick={() => setOpen(false)}>✕ Cancel</button>
+      </div>
+      <form onSubmit={handleSubmit}>
+        <div className="form-grid">
+          <div className="form-field">
+            <label htmlFor="policy_number">Policy Number</label>
+            <input
+              id="policy_number"
+              placeholder="e.g. POL-2024-009"
+              value={form.policy_number}
+              onChange={e => setForm(f => ({ ...f, policy_number: e.target.value }))}
+            />
+          </div>
+          <div className="form-field" style={{ gridColumn: '1 / -1' }}>
+            <label htmlFor="description">Description</label>
+            <textarea
+              id="description"
+              placeholder="Describe the claim event…"
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+        </div>
+        <button type="submit" className="btn-primary" disabled={saving}>
+          {saving ? <><span className="spinner" /> Creating…</> : 'Create Claim'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── Notification Timeline ─────────────────────────────────────────────────────
+
+function NotificationTimeline({ claimId, claim }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const intervalRef = useRef(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/claims/${claimId}/notifications`);
+      const json = await res.json();
+      setData(json);
+    } catch (_) {}
+    setLoading(false);
+  }, [claimId]);
+
+  useEffect(() => {
+    fetchData();
+    // Poll every 2s to pick up in-progress retries live
+    intervalRef.current = setInterval(fetchData, 2000);
+    return () => clearInterval(intervalRef.current);
+  }, [fetchData]);
+
+  if (loading) return <div style={{ padding: 12, color: 'var(--text-muted)' }}><span className="spinner" /> Loading…</div>;
+  if (!data) return null;
+
+  const { notifications } = data;
+
+  return (
+    <div>
+      <p className="tl-meta" style={{ marginBottom: 12 }}>
+        {notifications.length === 0
+          ? 'No notification attempts yet for this claim.'
+          : `${notifications.length} notification record(s) — auto-refreshing every 2s`}
+      </p>
+
+      {notifications.length === 0 && (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+          Change the claim's status above to trigger the notification relay.
+        </p>
+      )}
+
+      <ul className="timeline">
+        {notifications.map(n => (
+          <li key={n.id} className="timeline-item">
+            <span className={`timeline-dot ${dotClass(n.status)}`} />
+            <div className="tl-header">
+              <span className="tl-channel">{n.channel}</span>
+              <span className={`badge ${notifStatusClass(n.status)}`} style={{ fontSize: '0.7rem' }}>
+                <span className="badge-dot" />
+                {n.status}
+              </span>
+              <span className="tag">{n.attempt_count} attempt{n.attempt_count !== 1 ? 's' : ''}</span>
+              <span className="tl-meta">{fmtDate(n.last_attempt_at)}</span>
+            </div>
+            {n.response_detail && (
+              <div className="tl-detail">
+                {(() => {
+                  try {
+                    return JSON.stringify(JSON.parse(n.response_detail), null, 2);
+                  } catch {
+                    return n.response_detail;
+                  }
+                })()}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── Detail Panel ──────────────────────────────────────────────────────────────
+
+function DetailPanel({ claim, onClose, onRefresh, toast }) {
+  const [updating, setUpdating] = useState(false);
+  const STATUSES = ['Open', 'Approved', 'Rejected'];
+
+  const changeStatus = async (newStatus) => {
+    if (newStatus === claim.status) return;
+    setUpdating(true);
+    try {
+      const res = await fetch(`${API}/api/claims/${claim.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Update failed');
+      toast(`Status changed to "${newStatus}" — notifications firing…`, 'info');
+      onRefresh();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <div className="detail-panel">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div>
+          <div className="detail-title">
+            <span className="policy-num">{claim.policy_number}</span>
+          </div>
+          <div className="detail-sub">{claim.description}</div>
+        </div>
+        <button className="btn-ghost btn-sm" onClick={onClose}>✕</button>
+      </div>
+
+      <div className="flex-gap" style={{ marginBottom: 14 }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current status:</span>
+        <StatusBadge status={claim.status} />
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Created: {fmtDate(claim.created_at)}</span>
+      </div>
+
+      <div className="section-sep" />
+
+      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+        Change status to trigger the App Events notification relay:
+      </p>
+      <div className="status-actions">
+        {STATUSES.map(s => (
+          <button
+            key={s}
+            className={s === claim.status ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+            disabled={updating || s === claim.status}
+            onClick={() => changeStatus(s)}
+          >
+            {updating && s !== claim.status ? '' : null}
+            {s}
+          </button>
+        ))}
+        {updating && <span className="spinner" />}
+      </div>
+
+      <div className="section-sep" />
+      <p className="card-title" style={{ marginBottom: 12 }}>Notification History</p>
+      <NotificationTimeline claimId={claim.id} claim={claim} />
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+
+function App() {
+  const [claims, setClaims] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const { toasts, toast } = useToast();
+
+  const fetchClaims = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/claims`);
+      const data = await res.json();
+      setClaims(data);
+    } catch (err) {
+      toast('Failed to load claims.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClaims();
+    const interval = setInterval(fetchClaims, 3000); // live-refresh every 3s
+    return () => clearInterval(interval);
+  }, [fetchClaims]);
+
+  const selectedClaim = claims.find(c => c.id === selectedId);
+
+  return (
+    <div className="app-shell">
+      {/* Header */}
+      <header>
+        <div className="brand">
+          <h1>⚡ Claim Notification Relay</h1>
+          <p>Modeled on Guidewire's App Events pattern · Portfolio project · Not Guidewire software</p>
+        </div>
+        <div className="flex-gap">
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {claims.length} claim{claims.length !== 1 ? 's' : ''}
+          </span>
+          <button className="btn-ghost btn-sm" onClick={fetchClaims}>⟳ Refresh</button>
+        </div>
+      </header>
+
+      {/* New Claim Form */}
+      <NewClaimForm onCreated={fetchClaims} toast={toast} />
+
+      {/* Detail Panel */}
+      {selectedClaim && (
+        <DetailPanel
+          claim={selectedClaim}
+          onClose={() => setSelectedId(null)}
+          onRefresh={fetchClaims}
+          toast={toast}
+        />
+      )}
+
+      {/* Claims Table */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">All Claims</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Click a row to view details & change status
+          </span>
+        </div>
+
+        {loading && (
+          <div className="empty-state"><span className="spinner" /> Loading…</div>
+        )}
+
+        {!loading && claims.length === 0 && (
+          <div className="empty-state">
+            No claims yet. Create one above, or run <code>npm run seed</code> for demo data.
+          </div>
+        )}
+
+        {!loading && claims.length > 0 && (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Policy #</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>CRM</th>
+                  <th>Notify</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {claims.map(claim => {
+                  const crm    = claim.notification_status?.crm;
+                  const notify = claim.notification_status?.notify;
+                  return (
+                    <tr
+                      key={claim.id}
+                      onClick={() => setSelectedId(claim.id === selectedId ? null : claim.id)}
+                      className={claim.id === selectedId ? 'selected' : ''}
+                    >
+                      <td><span className="tag">#{claim.id}</span></td>
+                      <td><span className="policy-num">{claim.policy_number}</span></td>
+                      <td><div className="desc-cell" title={claim.description}>{claim.description}</div></td>
+                      <td><StatusBadge status={claim.status} /></td>
+                      <td>
+                        {crm
+                          ? <NotifBadge channel="crm" status={crm.status} attempts={crm.attempt_count} />
+                          : <span className="badge notif-pending"><span className="badge-dot" />CRM · Pending</span>
+                        }
+                      </td>
+                      <td>
+                        {notify
+                          ? <NotifBadge channel="notify" status={notify.status} attempts={notify.attempt_count} />
+                          : <span className="badge notif-pending"><span className="badge-dot" />Notify · Pending</span>
+                        }
+                      </td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                        {fmtDate(claim.created_at)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+
+
+      <ToastContainer toasts={toasts} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

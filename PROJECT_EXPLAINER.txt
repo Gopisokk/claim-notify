@@ -1,0 +1,378 @@
+================================================================================
+  CLAIM NOTIFICATION RELAY — PROJECT EXPLAINER
+  Plain-English guide: what it is, why it exists, what it does, and the terms
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 1 — WHAT IS THIS PROJECT?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is a portfolio/resume project built to demonstrate one specific
+concept from the insurance software world:
+
+  "When something important changes inside a system (e.g. a claim's status
+   changes from Open to Approved), how do you automatically notify OTHER
+   systems about it — reliably, with retry if it fails?"
+
+The project is called the "Claim Notification Relay" and it simulates that
+exact pattern using Node.js (JavaScript) as the backend server.
+
+IMPORTANT: This is NOT Guidewire software. It does not use any Guidewire
+code or connect to any real Guidewire system. It is built from scratch to
+demonstrate the same IDEA that Guidewire calls "App Events."
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 2 — DOESN'T GUIDEWIRE ALREADY DO THIS?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+YES — Guidewire absolutely does this, and does it at enterprise scale.
+Here's why we still built this project anyway:
+
+
+  REASON 1 — GUIDEWIRE IS NOT ACCESSIBLE TO EVERYONE
+  ----------------------------------------------------
+  Guidewire InsuranceSuite is a licensed, closed enterprise product. You
+  cannot download it, spin up a demo, or practice with it unless your
+  employer has a paid license and has given you access. It costs millions
+  of dollars per year for an insurance company to run.
+
+  So if you want to SHOW that you understand how Guidewire's integration
+  patterns work — for a job interview, a resume, or a portfolio — you
+  cannot show actual Guidewire code. You must build something that
+  DEMONSTRATES THE SAME CONCEPT independently.
+
+
+  REASON 2 — GUIDEWIRE'S VERSION IS OPAQUE (YOU DON'T SEE THE INTERNALS)
+  ------------------------------------------------------------------------
+  Inside real Guidewire, App Events uses Apache Kafka (an industrial-grade
+  message streaming platform), proprietary "Integration Graphs" to define
+  what data to send, and a complex cloud-native pipeline. None of that
+  internals code is visible to you as a developer.
+
+  This project makes all the internals VISIBLE AND READABLE — you can open
+  notifier.js and see exactly: how the HTTP call is made, how the retry
+  loop works, how the delay is calculated (1s, then 2s, then 4s), how
+  each attempt is stored. That transparency is the point.
+
+
+  REASON 3 — INTERVIEWERS WANT TO SEE YOU UNDERSTAND THE PATTERN, NOT COPY IT
+  ------------------------------------------------------------------------------
+  A portfolio project that says "I built a system that models Guidewire's
+  App Events outbound notification pattern, with retry logic and a live
+  dashboard" tells an interviewer FAR MORE than saying "I used Guidewire."
+
+  It shows you understand WHY the pattern exists, not just how to click
+  buttons in a GUI.
+
+
+  REASON 4 — NO OTHER FREE ALTERNATIVE EXISTS
+  --------------------------------------------
+  There is no open-source, free version of Guidewire's App Events.
+  The closest public alternatives (like Apache Kafka + custom producer,
+  or cloud-specific tools like AWS EventBridge) all require significant
+  infrastructure setup and cloud accounts. This project achieves the same
+  DEMONSTRATION goal with zero infrastructure — just Node.js and a JSON
+  file.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 3 — WHAT DOES GUIDEWIRE'S APP EVENTS ACTUALLY DO?
+           (The real-world context behind this project)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Guidewire InsuranceSuite is used by real insurance companies (like State
+Farm, Allstate, Zurich, etc.) to manage their core insurance operations.
+It has three main modules:
+
+  - PolicyCenter  → manages insurance policies (who is insured, for what)
+  - ClaimCenter   → manages claims (when something goes wrong and someone
+                    files for money)
+  - BillingCenter → manages payments and invoices
+
+Now, an insurance company does NOT ONLY use Guidewire. They also use:
+
+  - A CRM system (e.g. Salesforce) to track customer relationships
+  - A fraud detection engine to score claims for fraud risk
+  - An Email/SMS gateway to notify customers ("Your claim was approved!")
+  - A medical review system for injury claims
+  - A payment system to send settlement checks
+  - A data warehouse for reporting and analytics
+
+When a claim's status changes inside ClaimCenter (e.g. Open → Approved),
+ALL of those external systems potentially need to know about it — instantly.
+
+Guidewire's App Events mechanism handles this. When the status changes:
+
+  1. Guidewire captures the event internally
+  2. It generates a data snapshot (a "claim graph") of what the claim
+     looks like at that moment
+  3. It publishes that snapshot outward to every subscribed external system
+     via HTTP webhooks
+  4. If a system is temporarily down, it retries the delivery
+  5. All of this happens asynchronously (the claims adjuster using the
+     Guidewire UI doesn't have to wait for notifications to succeed)
+
+Without this mechanism, someone at an insurance company would have to
+manually call the CRM team to say "hey, claim #12345 was approved, please
+update Salesforce." That's slow, error-prone, and doesn't scale.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 4 — WHAT DOES THIS PROJECT DO? (Step by step)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1 — You have a list of claims
+  The system stores insurance claims (policy number, description, status).
+  Status can be: Open, Approved, or Rejected.
+
+Step 2 — You change a claim's status
+  You either click a button in the dashboard, or you send an API call like:
+    PATCH /api/claims/1/status  { "status": "Approved" }
+
+Step 3 — The server immediately responds (doesn't make you wait)
+  The backend saves the new status and instantly sends back "OK". It does
+  NOT make you wait for notifications to be sent. This is called
+  "fire-and-forget" or "asynchronous" processing.
+
+Step 4 — In the background, two notifications are fired at the same time
+  The notifier.js engine sends HTTP POST requests to two mock endpoints:
+
+    POST /mock/crm    → simulates a CRM receiving the event
+                        (always succeeds — represents the happy path)
+
+    POST /mock/notify → simulates an Email/SMS gateway
+                        (randomly fails ~20% of the time — this is
+                        deliberate, to make retry logic visible)
+
+  Both are sent AT THE SAME TIME (concurrently), not one after the other.
+
+Step 5 — If a notification fails, it retries automatically
+  If /mock/notify returns an error (503 Service Unavailable), the system
+  waits 1 second and tries again. If that fails too, it waits 2 seconds.
+  If that also fails, it waits 4 seconds for a final try. This is called
+  exponential backoff. After 3 total attempts with no success, the
+  delivery is marked "Failed."
+
+  Retry schedule:
+    Attempt 1 → immediate
+    Attempt 2 → wait 1 second, then try
+    Attempt 3 → wait 2 seconds, then try
+    → If attempt 3 also fails → status = "Failed"
+
+Step 6 — Every attempt is recorded
+  Each time a notification is sent (or fails), the database record for
+  that channel is updated with: status, attempt count, timestamp, and
+  the exact response received. You can see this in the dashboard.
+
+Step 7 — The dashboard shows everything live
+  The React frontend polls the API every 3 seconds and shows:
+    - All claims and their statuses
+    - Per-claim, per-channel delivery status (Sent / Retrying / Failed)
+    - Full delivery history when you click a claim row
+    - A "Replay" button on Failed rows so you can re-trigger delivery
+
+Step 8 — You can replay a failed delivery
+  If a notification is stuck at "Failed", you click Replay. The system
+  creates a fresh delivery attempt for that one channel only, runs the
+  same retry logic, and shows you the new result.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 5 — TERMS EXPLAINED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GUIDEWIRE INSURANCESUITE
+  A commercial software platform used by property & casualty (P&C) insurance
+  companies to run their core operations — policies, claims, and billing.
+  Think of it as the "brain" of an insurance company's IT systems.
+  Companies like State Farm, Allstate, Zurich use it.
+
+P&C INSURANCE (Property & Casualty)
+  The type of insurance that covers physical things (your car, your house)
+  and liability (if someone sues you). Opposed to life insurance or health
+  insurance. ClaimCenter is specifically built for P&C claims.
+
+CLAIM
+  When something bad happens (car accident, house fire, theft), the insured
+  person files a "claim" asking the insurance company to pay for the damage.
+  A claim goes through statuses: Open (being reviewed) → Approved (we'll
+  pay) or Rejected (we won't pay).
+
+APP EVENTS (Guidewire's term)
+  Guidewire's built-in mechanism for publishing outbound notifications when
+  something changes inside the core system. It is pub/sub (publish-subscribe)
+  — Guidewire publishes the event, and any system that has "subscribed" to
+  that event type receives it. Internally uses Apache Kafka.
+
+PUB/SUB (Publish-Subscribe)
+  A messaging pattern where:
+    - The PUBLISHER (Guidewire) just broadcasts events without caring who
+      receives them
+    - The SUBSCRIBERS (CRM, fraud engine, email gateway) sign up to receive
+      specific events
+  They are decoupled — the publisher doesn't know or care about the subscribers.
+
+WEBHOOK
+  A way for one server to automatically call another server's URL when
+  something happens. When Guidewire's App Events fires, it sends an HTTP POST
+  request to a registered webhook URL. This project's /mock/crm and
+  /mock/notify are webhook endpoints.
+
+HTTP POST
+  A standard web request type used to SEND data to a server. When you submit
+  a form on a website, it usually does an HTTP POST. In this project, the
+  notifier sends HTTP POST requests to the mock endpoints carrying the claim
+  event data.
+
+EXPONENTIAL BACKOFF
+  A retry strategy where you wait LONGER between each retry, not the same
+  amount of time. Why? Because if a server is overloaded, hitting it again
+  immediately makes things worse. Waiting gives it time to recover.
+  This project uses: 1 second, then 2 seconds, then 4 seconds.
+  (1, 2, 4 — doubles each time = "exponential")
+
+ASYNC / ASYNCHRONOUS
+  Doing two things without one having to wait for the other to finish. In
+  this project: the API responds to your status-change request immediately,
+  and THEN the notifications go out in the background. You don't have to
+  sit there waiting for the CRM to respond before you get your "OK" back.
+
+FIRE-AND-FORGET
+  Sending a message/notification and moving on without waiting to see if
+  it was received. The main claim update is fire-and-forget with respect
+  to notifications — the claim is saved, the user gets a response, and
+  notifications happen afterward independently.
+
+REST API
+  A standard way for systems to communicate over the internet using HTTP.
+  This project's backend exposes a REST API:
+    GET  /api/claims       → gives you list of claims
+    POST /api/claims       → creates a claim
+    PATCH /api/claims/1/status → updates a claim's status
+
+CHANNEL
+  In this project, a "channel" means one specific destination for a
+  notification. We have two channels: "crm" and "notify". Each channel
+  gets its own delivery record and its own retry cycle.
+
+DELIVERY RECORD
+  One database entry per (claim + channel + trigger-event). It stores:
+    - status: Sent / Retrying / Failed
+    - attempt_count: how many times we tried
+    - last_attempt_at: when we last tried
+    - response_detail: what the server said back (success or error message)
+
+MOCK ENDPOINT
+  A fake version of a real external system. Instead of actually connecting
+  to Salesforce (real CRM) or Twilio (real SMS service), we built simple
+  fake endpoints in the same server that log what they receive and return
+  a response. /mock/notify artificially fails 20% of the time so you can
+  see the retry logic working.
+
+INTEGRATION GATEWAY (Guidewire's term)
+  A separate Guidewire component (NOT what this project builds) that uses
+  Apache Camel to do complex routing, data transformation, and protocol
+  bridging between Guidewire and external systems. This project does NOT
+  implement or replicate the Integration Gateway.
+
+CLOUD API (Guidewire's term)
+  Guidewire's inbound REST API — external systems call INTO Guidewire using
+  it. This is the OPPOSITE direction from App Events. This project does not
+  implement Cloud API either.
+
+GOSU
+  Guidewire's proprietary scripting language, based on Java. It is used to
+  write business rules and customizations INSIDE the Guidewire platform.
+  This project contains zero Gosu — it's Node.js (JavaScript).
+
+NODE.JS + EXPRESS
+  Node.js: a runtime that lets you run JavaScript on a server (not just in
+  a browser). Express: a lightweight framework for building HTTP APIs in
+  Node.js. Together they form this project's backend.
+
+REACT
+  A JavaScript library for building user interfaces. This project uses a
+  single-page React app (loaded from CDN, no build step required) to
+  display the claims dashboard.
+
+JSON FILE STORE
+  This project saves data in a plain text file (data/claims.json) formatted
+  as JSON (JavaScript Object Notation). It is NOT a database like PostgreSQL
+  or MySQL — it is just a structured text file read and written by Node.js.
+  Chosen because it requires zero setup and has no native compilation issues.
+
+RETRY LOGIC
+  Code that automatically tries an operation again if it fails, instead of
+  giving up immediately. Good retry logic includes backoff (waiting between
+  retries) and a maximum attempt count (so it doesn't loop forever).
+
+BEST-EFFORT DELIVERY
+  A delivery model where the system tries its hardest (3 attempts with
+  backoff) but does NOT guarantee that every message is delivered. If the
+  process crashes mid-retry, that delivery is lost. A production-grade
+  system would use a durable message queue (like RabbitMQ or Kafka) to
+  guarantee delivery even across restarts. This project is best-effort by
+  design — appropriate for a portfolio demo.
+
+DASHBOARD / ADMIN UI
+  The frontend web page (client/index.html) that shows all claims and their
+  notification statuses in a table. It auto-refreshes every 3 seconds so
+  you can watch Retrying → Sent happen in real time.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PART 6 — ONE-PARAGRAPH SUMMARY (for interviews / elevator pitch)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"Claim Notification Relay is a portfolio project that demonstrates how an
+insurance core system can automatically push outbound notifications to
+external subscribers when a claim's status changes — the same concept
+Guidewire calls App Events. When a claim moves from Open to Approved, the
+system asynchronously fires HTTP notifications to two mock external channels
+(a CRM and an Email/SMS gateway) concurrently, with exponential-backoff
+retry logic (up to 3 attempts: 1s, 2s, 4s delay) if a delivery fails.
+Every attempt is tracked and shown in a live admin dashboard. A Replay
+feature lets you re-trigger a failed delivery without changing the claim's
+status again. Built with Node.js, Express, and plain React — no Guidewire
+SDK, no message broker, no cloud account required."
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  FILE STRUCTURE QUICK REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  server/
+  │
+  ├── index.js        → The main server file. Starts Express, wires up routes.
+  │
+  ├── db.js           → Reads/writes data/claims.json. No SQL. Just a JS object
+  │                     saved to a file after every change.
+  │
+  ├── notifier.js     → THE CORE OF THE PROJECT. Contains the retry loop,
+  │                     the backoff delays, the HTTP calls to mock endpoints,
+  │                     and the delivery record updates.
+  │
+  ├── seed.js         → Inserts 8 demo claims so the dashboard isn't empty
+  │                     on first run.
+  │
+  └── routes/
+      ├── claims.js   → All the API endpoints: create claim, list claims,
+      │                 change status, get delivery history, replay.
+      └── mock.js     → The fake external systems. /mock/crm always succeeds.
+                        /mock/notify fails 20% of the time on purpose.
+
+  client/
+  └── index.html      → The entire frontend in one file. React loaded from
+                        CDN. Shows the claims table, badges, delivery timeline,
+                        replay button, and summary counts.
+
+  data/
+  └── claims.json     → Auto-created. All claims and delivery records live here.
+                        Open it in a text editor — it's just readable JSON.
+
+
+================================================================================
+  END OF DOCUMENT
+================================================================================

@@ -658,8 +658,14 @@ function NotifTimeline({ claimId, push, onRefreshClaims }) {
     setReplaying(r => ({ ...r, [channel]: true }));
     try {
       const res = await fetch(`${API}/api/claims/${claimId}/notifications/${channel}/replay`, { method: 'POST' });
-      const j   = await res.json();
-      if (!res.ok) throw new Error(j.error || 'Replay failed');
+
+      // Safely parse — server might return HTML on error (e.g. route not found)
+      const ct   = res.headers.get('content-type') || '';
+      const body = ct.includes('application/json')
+        ? await res.json()
+        : await res.text().then(t => { throw new Error(`Server returned ${res.status}: ${t.slice(0, 120)}`); });
+
+      if (!res.ok) throw new Error(body.error || `Replay failed (${res.status})`);
       push(`Replaying ${channel} channel…`);
       onRefreshClaims();
     } catch (err) { push(err.message, 'error'); }

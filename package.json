@@ -4,9 +4,12 @@
   "description": "A portfolio project modeling Guidewire's App Events pattern for outbound claim status notifications.",
   "main": "server/index.js",
   "scripts": {
-    "dev": "nodemon server/index.js",
-    "start": "node server/index.js",
-    "seed": "node server/seed.js"
+    "dev":       "nodemon server/index.js",
+    "start":     "node server/index.js",
+    "seed":      "node server/seed.js",
+    "setup":     "node server/seed.js && node server/index.js",
+    "setup:dev": "node server/seed.js && nodemon server/index.js",
+    "fresh":     "node -e \"require('fs').rmSync('data/claims.json',{force:true})\" && node server/seed.js && node server/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

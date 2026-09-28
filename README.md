@@ -90,23 +90,35 @@ transient failures. The event envelope used here (`event_type`, `occurred_at`,
 - Node.js 18 or later
 - npm
 
-### Install & run
+### One-command start (recommended)
 
 ```bash
-# 1. Install dependencies
+npm install        # install dependencies (first time only)
+npm run setup      # seeds data + starts server in one step
+```
+
+Open **http://localhost:3001** in your browser.
+
+> **Starting fresh?** If you want to wipe existing data and reseed from scratch:
+> ```bash
+> npm run fresh
+> ```
+
+### Manual steps (if you prefer)
+
+```bash
+# 1. Install dependencies (first time only)
 npm install
 
 # 2. Seed the JSON store with 8 demo claims
 npm run seed
 
-# 3. Start the server (auto-reloads on file changes)
+# 3a. Start with auto-reload (recommended for development)
 npm run dev
 
-# — or without auto-reload —
+# 3b. Start without auto-reload
 npm start
 ```
-
-Open **http://localhost:3001** in your browser.
 
 The `data/` directory is created automatically; it contains `claims.json` (the JSON file store).
 

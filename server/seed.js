@@ -12,14 +12,14 @@
 const db = require('./db');
 
 const DEMO_CLAIMS = [
-  { policy_number: 'POL-2024-001', description: 'Water damage to living room ceiling following pipe burst',                   status: 'Open'     },
-  { policy_number: 'POL-2024-002', description: 'Rear-end collision on I-95; vehicle requires bumper and trunk repair',       status: 'Approved' },
-  { policy_number: 'POL-2024-003', description: 'Theft of personal electronics from unattended vehicle',                      status: 'Rejected' },
-  { policy_number: 'POL-2024-004', description: 'Hail damage to roof and two skylights after severe storm',                   status: 'Open'     },
-  { policy_number: 'POL-2024-005', description: 'Slip-and-fall injury in insured commercial property lobby',                  status: 'Approved' },
-  { policy_number: 'POL-2024-006', description: 'Kitchen fire caused by electrical fault; structural damage reported',        status: 'Open'     },
-  { policy_number: 'POL-2024-007', description: 'Vandalism to parked vehicle; keyed doors and broken mirrors',                status: 'Rejected' },
-  { policy_number: 'POL-2024-008', description: 'Flooding from overflowing river; basement and ground floor affected',        status: 'Approved' },
+  { policy_number: 'POL-2024-001', description: 'Water damage to living room ceiling following pipe burst',                   status: 'Open',     claimant_email: 'alice.morgan@example.com'   },
+  { policy_number: 'POL-2024-002', description: 'Rear-end collision on I-95; vehicle requires bumper and trunk repair',       status: 'Approved', claimant_email: 'bob.chen@example.com'       },
+  { policy_number: 'POL-2024-003', description: 'Theft of personal electronics from unattended vehicle',                      status: 'Rejected', claimant_email: 'carol.davis@example.com'    },
+  { policy_number: 'POL-2024-004', description: 'Hail damage to roof and two skylights after severe storm',                   status: 'Open',     claimant_email: 'david.kim@example.com'      },
+  { policy_number: 'POL-2024-005', description: 'Slip-and-fall injury in insured commercial property lobby',                  status: 'Approved', claimant_email: 'emma.patel@example.com'     },
+  { policy_number: 'POL-2024-006', description: 'Kitchen fire caused by electrical fault; structural damage reported',        status: 'Open',     claimant_email: 'frank.russo@example.com'    },
+  { policy_number: 'POL-2024-007', description: 'Vandalism to parked vehicle; keyed doors and broken mirrors',                status: 'Rejected', claimant_email: 'grace.lee@example.com'      },
+  { policy_number: 'POL-2024-008', description: 'Flooding from overflowing river; basement and ground floor affected',        status: 'Approved', claimant_email: 'henry.wu@example.com'       },
 ];
 
 function seed() {
@@ -31,7 +31,7 @@ function seed() {
   }
 
   for (const claim of DEMO_CLAIMS) {
-    const { lastInsertRowid: claimId } = db.insertClaim(claim.policy_number, claim.description);
+    const { lastInsertRowid: claimId } = db.insertClaim(claim.policy_number, claim.description, claim.claimant_email);
 
     // Set non-Open status directly (insertClaim always starts at 'Open')
     if (claim.status !== 'Open') {

@@ -19,6 +19,9 @@
  *   /                        — serves the React frontend
  */
 
+// Load environment variables from .env (if present) before anything else
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

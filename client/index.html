@@ -452,6 +452,43 @@
     .ml-auto { margin-left: auto; }
     .mono { font-family: var(--mono); font-size: 11px; }
     hr.sep { border: none; border-top: 1px solid var(--border2); margin: 12px 0; }
+
+    /* ── Email chip ──────────────────────────────────────────────────────── */
+    .email-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--off);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      padding: 2px 7px;
+      margin-top: 4px;
+      font-family: var(--mono);
+    }
+    .email-chip a { color: inherit; text-decoration: none; }
+    .email-chip a:hover { text-decoration: underline; }
+
+    /* ── Filter bar ──────────────────────────────────────────────────────── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-bar select {
+      font-family: var(--font);
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 5px 8px;
+      color: var(--text);
+      background: var(--white);
+      cursor: pointer;
+    }
+    .filter-bar select:focus { outline: none; border-color: var(--black); }
   </style>
 </head>
 <body>
@@ -565,25 +602,29 @@ function NotifBadge({ channel, status, attempts }) {
 
 function NewClaimForm({ onCreated, push }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ policy_number: '', description: '' });
+  const [form, setForm] = useState({ policy_number: '', description: '', claimant_email: '' });
   const [saving, setSaving] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.policy_number.trim() || !form.description.trim()) {
-      return push('Both fields are required.', 'error');
+      return push('Policy number and description are required.', 'error');
     }
     setSaving(true);
     try {
+      const payload = { policy_number: form.policy_number.trim(), description: form.description.trim() };
+      if (form.claimant_email.trim()) payload.claimant_email = form.claimant_email.trim();
+
       const res  = await fetch(`${API}/api/claims`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
-      push(`Claim ${data.policy_number} created.`);
-      setForm({ policy_number: '', description: '' });
+      const emailNote = data.claimant_email ? ` · Confirmation email sent to ${data.claimant_email}` : '';
+      push(`Claim ${data.policy_number} created.${emailNote}`);
+      setForm({ policy_number: '', description: '', claimant_email: '' });
       setOpen(false);
       onCreated();
     } catch (err) { push(err.message, 'error'); }
@@ -607,7 +648,7 @@ function NewClaimForm({ onCreated, push }) {
       <form onSubmit={submit}>
         <div className="form-row">
           <div className="field">
-            <label className="field-label">Policy Number</label>
+            <label className="field-label">Policy Number *</label>
             <input
               placeholder="e.g. POL-2024-009"
               value={form.policy_number}
@@ -615,11 +656,22 @@ function NewClaimForm({ onCreated, push }) {
             />
           </div>
           <div className="field" style={{ flex: 2 }}>
-            <label className="field-label">Description</label>
+            <label className="field-label">Description *</label>
             <input
               placeholder="Describe the claim event"
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="field" style={{ maxWidth: 320 }}>
+            <label className="field-label">Claimant Email <span style={{ color: 'var(--faint)', fontWeight: 400 }}>(optional — sends confirmation email)</span></label>
+            <input
+              type="email"
+              placeholder="claimant@example.com"
+              value={form.claimant_email}
+              onChange={e => setForm(f => ({ ...f, claimant_email: e.target.value }))}
             />
           </div>
         </div>
@@ -680,7 +732,7 @@ function NotifTimeline({ claimId, push, onRefreshClaims }) {
   return (
     <div>
       <div className="tl-section-label">
-        Notification History
+        Delivery History
         {notifications.length > 0 && <span style={{ fontWeight: 400, marginLeft: 6 }}>· {notifications.length} record{notifications.length !== 1 ? 's' : ''} · auto-refreshing</span>}
       </div>
 
@@ -751,6 +803,12 @@ function DetailPanel({ claim, onClose, onRefresh, push }) {
         <div>
           <div className="detail-policy">{claim.policy_number}</div>
           <div className="detail-desc">{claim.description}</div>
+          {claim.claimant_email && (
+            <div className="email-chip">
+              ✉ <a href={`mailto:${claim.claimant_email}`}>{claim.claimant_email}</a>
+              <span style={{ color: 'var(--faint)', marginLeft: 4 }}>· emails sent on status change</span>
+            </div>
+          )}
         </div>
         <button className="btn-xs" onClick={onClose}>✕ Close</button>
       </div>
@@ -785,9 +843,10 @@ function DetailPanel({ claim, onClose, onRefresh, push }) {
 // ── App ────────────────────────────────────────────────────────────────────────
 
 function App() {
-  const [claims, setClaims]     = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [claims, setClaims]       = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [selectedId, setSelected] = useState(null);
+  const [statusFilter, setFilter] = useState('All');
   const { toasts, push } = useToast();
 
   const load = useCallback(async () => {
@@ -806,6 +865,7 @@ function App() {
   }, [load]);
 
   const selected = claims.find(c => c.id === selectedId);
+  const filtered = statusFilter === 'All' ? claims : claims.filter(c => c.status === statusFilter);
 
   return (
     <div className="shell">
@@ -837,7 +897,18 @@ function App() {
       )}
 
       {/* Table */}
-      <div className="section-label">All Claims</div>
+      <div className="filter-bar">
+        <div className="section-label" style={{ marginBottom: 0 }}>All Claims</div>
+        <select value={statusFilter} onChange={e => setFilter(e.target.value)}>
+          <option value="All">All statuses</option>
+          <option value="Open">Open</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+        {statusFilter !== 'All' && (
+          <span style={{ fontSize: 11, color: 'var(--faint)' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+        )}
+      </div>
 
       {loading && <div className="empty"><span className="spinner" />Loading claims…</div>}
 
@@ -847,7 +918,17 @@ function App() {
         </div>
       )}
 
-      {!loading && claims.length > 0 && (
+      {!loading && claims.length === 0 && (
+        <div className="empty">
+          No claims. Create one above or run <span className="mono">npm run seed</span> for demo data.
+        </div>
+      )}
+
+      {!loading && claims.length > 0 && filtered.length === 0 && (
+        <div className="empty">No {statusFilter} claims. <button style={{ border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'var(--muted)', padding: 0, font: 'inherit' }} onClick={() => setFilter('All')}>Clear filter</button></div>
+      )}
+
+      {!loading && filtered.length > 0 && (
         <div className="table-wrap">
           <table>
             <thead>
@@ -858,11 +939,12 @@ function App() {
                 <th>Status</th>
                 <th>CRM</th>
                 <th>Notify</th>
+                <th>Email</th>
                 <th>Created</th>
               </tr>
             </thead>
             <tbody>
-              {claims.map(c => {
+              {filtered.map(c => {
                 const crm    = c.notification_status?.crm;
                 const notify = c.notification_status?.notify;
                 return (
@@ -886,6 +968,9 @@ function App() {
                         ? <NotifBadge channel="notify" status={notify.status} attempts={notify.attempt_count} />
                         : <span className="badge ns-pending">NOTIFY Pending</span>
                       }
+                    </td>
+                    <td style={{ fontSize: 11, color: 'var(--faint)', fontFamily: 'var(--mono)' }}>
+                      {c.claimant_email ? '✉' : '—'}
                     </td>
                     <td className="td-date">{fmtDate(c.created_at)}</td>
                   </tr>

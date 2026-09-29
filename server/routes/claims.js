@@ -22,19 +22,31 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
 const { triggerNotifications, notifyChannel, buildEventPayload } = require('../notifier');
+const { sendClaimCreatedEmail, sendStatusChangedEmail }          = require('../mailer');
 
 // ─── POST /api/claims ─────────────────────────────────────────────────────────
-router.post('/', (req, res) => {
-  const { policy_number, description } = req.body;
+router.post('/', async (req, res) => {
+  const { policy_number, description, claimant_email } = req.body;
 
   if (!policy_number || !description) {
     return res.status(400).json({ error: 'policy_number and description are required.' });
   }
 
-  const { lastInsertRowid } = db.insertClaim(policy_number, description);
+  // Basic email format validation (optional field)
+  if (claimant_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(claimant_email)) {
+    return res.status(400).json({ error: 'claimant_email is not a valid email address.' });
+  }
+
+  const { lastInsertRowid } = db.insertClaim(policy_number, description, claimant_email || null);
   const claim = db.getClaim(lastInsertRowid);
 
+  // Respond immediately
   res.status(201).json(claim);
+
+  // Fire confirmation email in the background (no-op if no email provided)
+  sendClaimCreatedEmail(claim).catch(err =>
+    console.error(`[Mailer] Failed to send claim-created email for claim ${claim.id}:`, err.message)
+  );
 });
 
 // ─── GET /api/claims ──────────────────────────────────────────────────────────
@@ -65,13 +77,17 @@ router.patch('/:id/status', async (req, res) => {
 
   const updatedClaim = db.updateClaimStatus(id, status);
 
-  // Respond immediately; notification flow runs in the background
+  // Respond immediately; all background work runs after this
   res.json(updatedClaim);
 
-  // Fire-and-forget: trigger outbound notifications asynchronously
-  // This models the App Events "publish on status change" behavior
+  // Fire-and-forget: outbound channel notifications (models App Events publish)
   triggerNotifications(updatedClaim).catch(err =>
     console.error(`[Notifier] Unhandled error for claim ${id}:`, err)
+  );
+
+  // Fire-and-forget: status-change email to claimant (no-op if no email on file)
+  sendStatusChangedEmail(updatedClaim).catch(err =>
+    console.error(`[Mailer] Failed to send status-change email for claim ${id}:`, err.message)
   );
 });
 

@@ -75,9 +75,9 @@ const db = {
   // ── claims ─────────────────────────────────────────────────────────────────
 
   /** Insert a new claim; returns { lastInsertRowid } */
-  insertClaim(policy_number, description) {
+  insertClaim(policy_number, description, claimant_email = null) {
     const id = nextId('claims');
-    const row = { id, policy_number, description, status: 'Open', created_at: now() };
+    const row = { id, policy_number, description, claimant_email, status: 'Open', created_at: now() };
     store.claims.push(row);
     save();
     return { lastInsertRowid: id };
